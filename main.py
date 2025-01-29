@@ -5,6 +5,12 @@ class MainWindow:
     def __init__(self):
 
         self.root = ctk.CTk()
+
+        self.min_width = 650
+        self.min_height = 440
+
+        self.root.minsize(self.min_width, self.min_height)
+
         self.root.geometry("900x600")
 
         self.font_style_body = ("Helvetica", 16)
@@ -17,11 +23,11 @@ class MainWindow:
 
         self.column_indexes = (0, 1)
 
-        U_TAG = '_' # Uniformity Tag
+        self.U_TAG = '_' # Uniformity Tag
 
-        self.gridFMaster.columnconfigure(self.column_indexes, uniform=U_TAG, weight=1)
-        self.gridFMaster.rowconfigure(0, uniform=U_TAG, weight=2)
-        self.gridFMaster.rowconfigure((1, 2, 3, 4), uniform=U_TAG, weight=1)
+        self.gridFMaster.columnconfigure(self.column_indexes, uniform=self.U_TAG, weight=1)
+        self.gridFMaster.rowconfigure(0, uniform=self.U_TAG, weight=2)
+        self.gridFMaster.rowconfigure((1, 2, 3, 4), uniform=self.U_TAG, weight=1)
 
         self.table = ttk.Treeview(self.gridFMaster, columns=("date", "description", "income", "expense", "balance"), show="headings")
 
@@ -44,8 +50,8 @@ class MainWindow:
         self.gridFrameA = ctk.CTkFrame(self.gridFMaster, fg_color="transparent")
         self.gridFrameA.grid(row=1, column=0, sticky="news")
 
-        self.gridFrameA.columnconfigure((0, 1), uniform=U_TAG, weight=1)
-        self.gridFrameA.rowconfigure(0, uniform=U_TAG, weight=1)
+        self.gridFrameA.columnconfigure((0, 1), uniform=self.U_TAG, weight=1)
+        self.gridFrameA.rowconfigure(0, uniform=self.U_TAG, weight=1)
 
         self.labelSpacing = 15
 
@@ -58,9 +64,9 @@ class MainWindow:
         self.gridFrameB = ctk.CTkFrame(self.gridFMaster, fg_color="transparent")
         self.gridFrameB.grid(row=1, column=1, sticky="news")
 
-        self.gridFrameB.columnconfigure(0, uniform=U_TAG, weight=1)
-        self.gridFrameB.columnconfigure(1, uniform=U_TAG, weight=2)
-        self.gridFrameB.rowconfigure((0, 1), uniform=U_TAG, weight=1)
+        self.gridFrameB.columnconfigure(0, uniform=self.U_TAG, weight=1)
+        self.gridFrameB.columnconfigure(1, uniform=self.U_TAG, weight=2)
+        self.gridFrameB.rowconfigure((0, 1), uniform=self.U_TAG, weight=1)
 
         self.radioVar = ctk.IntVar()
 
@@ -80,14 +86,19 @@ class MainWindow:
         self.inputAmount.configure(state=ctk.DISABLED)
         self.inputAmount.pack(side=ctk.LEFT)
 
-        self.btnAddRow = ctk.CTkButton(self.gridFMaster, text="Add Row", font=self.font_style_body)
-        self.btnAddRow.grid(row=2, column=0)
+        self.gridFButton1 = ctk.CTkFrame(self.gridFMaster, fg_color="transparent")
+        self.gridFButton1.grid(row=2, column=0, sticky="news")
+
+        self.button_frame_config(self.gridFButton1)
+
+        self.btnAddRow = ctk.CTkButton(self.gridFButton1, text="Add Row", font=self.font_style_body)
+        self.btnAddRow.grid(row=1, column=1, sticky="news")
 
         self.gridFrameC = ctk.CTkFrame(self.gridFMaster, fg_color="transparent")
         self.gridFrameC.grid(row=3, column=0, sticky="news")
 
-        self.gridFrameC.columnconfigure((0, 1), uniform=U_TAG, weight=1)
-        self.gridFrameC.rowconfigure(0, uniform=U_TAG, weight=1)
+        self.gridFrameC.columnconfigure((0, 1), uniform=self.U_TAG, weight=1)
+        self.gridFrameC.rowconfigure(0, uniform=self.U_TAG, weight=1)
 
         self.lblRowNum = ctk.CTkLabel(self.gridFrameC, text="Row to Delete:", font=self.font_style_body)
         self.lblRowNum.grid(row=0, column=0, sticky="e", padx=(0, self.labelSpacing))
@@ -95,17 +106,22 @@ class MainWindow:
         self.inputRowNum = ctk.CTkEntry(self.gridFrameC, font=self.font_style_body, placeholder_text="1")
         self.inputRowNum.grid(row=0, column=1, sticky="w", padx=(10, 0))
 
-        self.btnDeleteRow = ctk.CTkButton(self.gridFMaster, text="Delete Row", font=self.font_style_body)
-        self.btnDeleteRow.grid(row=4, column=0)
+        self.gridFButton2 = ctk.CTkFrame(self.gridFMaster, fg_color="transparent")
+        self.gridFButton2.grid(row=4, column=0, sticky="news")
+
+        self.button_frame_config(self.gridFButton2)
+
+        self.btnDeleteRow = ctk.CTkButton(self.gridFButton2, text="Delete Row", font=self.font_style_body)
+        self.btnDeleteRow.grid(row=1, column=1, sticky="news")
 
         self.gridFrameD = ctk.CTkFrame(self.gridFMaster, fg_color="transparent")
         self.gridFrameD.grid(row=3, column=1, sticky="news")
 
-        _var = 95
-        _var2 = 9598
+        self._var = 95
+        self._var2 = 9598
 
         self.lbl_totals = ctk.CTkLabel(self.gridFrameD, text="Total Income:\nTotal Expenses:", font=self.font_style_body, justify=ctk.LEFT)
-        self.lbl_total_vals = ctk.CTkLabel(self.gridFrameD, text="R {0:.2f}\nR {1:.2f}".format(_var, _var2), font=self.font_style_body, justify=ctk.RIGHT)
+        self.lbl_total_vals = ctk.CTkLabel(self.gridFrameD, text="R {0:.2f}\nR {1:.2f}".format(self._var, self._var2), font=self.font_style_body, justify=ctk.RIGHT)
 
         self.lbl_totals.pack(side=ctk.LEFT)
         self.lbl_total_vals.pack(side=ctk.LEFT, padx=(100,0))
@@ -114,5 +130,14 @@ class MainWindow:
 
     def enable_inputAmount(self):
        self.inputAmount.configure(state=ctk.NORMAL)
+
+    def button_frame_config(self, frame: ctk.CTkFrame):
+        frame.columnconfigure(0, uniform=self.U_TAG, weight=3)
+        frame.columnconfigure(1, uniform=self.U_TAG, weight=4)
+        frame.columnconfigure(2, uniform=self.U_TAG, weight=3)
+        frame.rowconfigure(0, uniform=self.U_TAG, weight=2)
+        frame.rowconfigure(1, uniform=self.U_TAG, weight=3)
+        frame.rowconfigure(2, uniform=self.U_TAG, weight=3)
+
 
 MainWindow()
