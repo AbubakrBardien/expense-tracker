@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 from datetime import date
 
 # This class is to restrict the CTkEntry widget to only accept integers and floats
@@ -25,7 +25,6 @@ class MainWindow(ctk.CTk):
 
     FONT_BODY = ("Helvetica", 16)
     TRANSPARENT = "transparent"
-    LABEL_SPACING = 15  # Helps ensure that "lblDesc" and "lblRowNum" are properly aligned
     U_TAG = "_"         # Uniformity Tag
 
     ########################
@@ -80,7 +79,7 @@ class MainWindow(ctk.CTk):
 
         self.table.grid(row=0, column=0, sticky="news", columnspan=len(self.column_indexes))
 
-        self.table.bind("<Delete>", self.delete_rows_with_keyboard)
+        self.table.bind("<Delete>", self.delete_selected_rows)
 
         ########################
 
@@ -97,10 +96,11 @@ class MainWindow(ctk.CTk):
         ##### Desciption related widgets #####
 
         self.lblDesc = ctk.CTkLabel(self.gridFrameA, text="Description:", font=self.FONT_BODY)
-        self.lblDesc.grid(row=0, column=0, sticky="e", padx=(0, self.LABEL_SPACING + 19))
+        self.lblDesc.grid(row=0, column=0, sticky="e")
 
         self.inputDesc = ctk.CTkEntry(self.gridFrameA, font=self.FONT_BODY)
-        self.inputDesc.grid(row=0, column=1, sticky="w", padx=(10, 0))
+        self.inputDesc.grid(row=0, column=1, sticky="w", padx=(5, 0))
+        self.inputDesc.bind("<KeyRelease>", self.checkInputs)
 
         ######################################
 
@@ -135,9 +135,10 @@ class MainWindow(ctk.CTk):
         self.lblAmount = ctk.CTkLabel(self.packAmountFrame, text="Amount:", font=self.FONT_BODY)
         self.lblAmount.pack(side=ctk.LEFT, padx=(0, 5))
 
-        self.inputAmount = NumericEntry(self.packAmountFrame, font=self.FONT_BODY, placeholder_text="0.0")
+        self.inputAmount = NumericEntry(self.packAmountFrame, font=self.FONT_BODY, placeholder_text="0.00")
         self.disable_inputAmount()
         self.inputAmount.pack(side=ctk.LEFT)
+        self.inputAmount.bind("<KeyRelease>", self.checkInputs)
 
         ##################################
 
@@ -148,8 +149,10 @@ class MainWindow(ctk.CTk):
 
         self.button_frame_config(self.gridFButton1)
 
-        self.running_total = 0
-        self.btnAddRow = ctk.CTkButton(self.gridFButton1, text="Add Row", font=self.FONT_BODY, command=self.insertRow)
+        self.balances = []           # Values used to populate the "Balance" column in the table
+        self.balance_changes = []    # Used to help manage the label relating to 'Total Income' and 'Total Expenses'
+
+        self.btnAddRow = ctk.CTkButton(self.gridFButton1, text="Add Row", font=self.FONT_BODY, state=ctk.DISABLED, command=self.insertRow)
         self.btnAddRow.grid(row=1, column=1, sticky="news")
 
         ############################################
@@ -161,8 +164,8 @@ class MainWindow(ctk.CTk):
 
         self.button_frame_config(self.gridFButton2)
 
-        self.btnDeleteRow = ctk.CTkButton(self.gridFButton2, text="Delete Row", font=self.FONT_BODY, command=self.delete_rows_with_button)
-        self.btnDeleteRow.grid(row=1, column=1, sticky="news")
+        self.btn_delete_last_row = ctk.CTkButton(self.gridFButton2, text="Delete Last Row", font=self.FONT_BODY, state=ctk.DISABLED, command=self.delete_last_row)
+        self.btn_delete_last_row.grid(row=1, column=1, sticky="news")
 
         ########################################
 
@@ -171,11 +174,11 @@ class MainWindow(ctk.CTk):
         self.gridFrameD = ctk.CTkFrame(self.gridFMaster, fg_color=self.TRANSPARENT)
         self.gridFrameD.grid(row=2, column=1, sticky="news", rowspan=2)
 
-        self._var = 95
-        self._var2 = 9598
+        self.totalIncome = 0
+        self.totalExpenses = 0
 
         self.lbl_totals = ctk.CTkLabel(self.gridFrameD, text="Total Income:\nTotal Expenses:", font=self.FONT_BODY, justify=ctk.LEFT)
-        self.lbl_total_vals = ctk.CTkLabel(self.gridFrameD, text="R {0:.2f}\nR {1:.2f}".format(self._var, self._var2), font=self.FONT_BODY, justify=ctk.RIGHT)
+        self.lbl_total_vals = ctk.CTkLabel(self.gridFrameD, text="R {0:.2f}\nR {1:.2f}".format(self.totalIncome, self.totalExpenses), font=self.FONT_BODY, justify=ctk.RIGHT)
 
         self.lbl_totals.pack(side=ctk.LEFT)
         self.lbl_total_vals.pack(side=ctk.LEFT, padx=(100,0))
@@ -200,31 +203,91 @@ class MainWindow(ctk.CTk):
         _income = 0
         _expense = 0
 
-        if   self.rb.get() == 1:  _income = float(self.inputAmount.get())
-        elif self.rb.get() == 2: _expense = float(self.inputAmount.get())
+        if self.rb.get() == 1:
+            _income = float(self.inputAmount.get())
+            self.totalIncome += _income
+        elif self.rb.get() == 2:
+            _expense = float(self.inputAmount.get())
+            self.totalExpenses += _expense
 
-        self.running_total = self.running_total + _income - _expense
+        if not self.balances:
+            self.balances.append(_income - _expense)
+        else:
+            self.balances.append(self.balances[-1] + _income - _expense)
+
+        self.balance_changes.append(_income - _expense)
 
         self.table.insert("", index=ctk.END, values=(
             date.today().strftime("%d %b %Y"),
             self.inputDesc.get(),
             "ZAR {:.2f}".format(_income),
             "ZAR {:.2f}".format(_expense),
-            "ZAR {:.2f}".format(self.running_total),
+            "ZAR {:.2f}".format(self.balances[-1]),
         ))
+
+        self.refreshLabels()
 
         self.inputDesc.delete("0", ctk.END)
         self.inputAmount.delete("0", ctk.END)
         self.disable_inputAmount()
         self.rb.set(-1)
+        self.btnAddRow.configure(state=ctk.DISABLED)
 
-    def delete_rows_with_keyboard(self, _):
-        for row in self.table.selection():
-            self.table.delete(row)
+        self.checkRows()
 
-    def delete_rows_with_button(self):
-        for row in self.table.selection():
-            self.table.delete(row)
+    def delete_selected_rows(self, _):
+        _last_selected_item = self.table.selection()[-1]
+        _last_item = self.table.get_children()[-1]
+
+        if _last_selected_item == _last_item:
+
+            num_selected_rows = len(self.table.selection())
+            del self.balances[-num_selected_rows:]
+
+            for _ in range(num_selected_rows):
+                self.adjustTotals()
+            self.refreshLabels()
+
+            for row in self.table.selection():
+                self.table.delete(row)
+            self.checkRows()
+        else:
+           messagebox.showerror("Invalid Range", "Must select the last row, or last few rows")
+
+    def delete_last_row(self):
+        self.adjustTotals()
+        self.refreshLabels()
+
+        _lastRow = self.table.get_children()[-1]
+        self.table.delete(_lastRow)
+
+        self.checkRows()
+
+    # Used to enable the "Add Row" button if the input fields have content
+    def checkInputs(self, _):
+        if self.inputDesc.get() and self.inputAmount.get():
+            self.btnAddRow.configure(state=ctk.NORMAL)
+        else:
+            self.btnAddRow.configure(state=ctk.DISABLED)
+
+    # Used to enable the "Delete Last Row" button if rows in the table exist
+    def checkRows(self):
+        if self.table.get_children():
+            self.btn_delete_last_row.configure(state=ctk.NORMAL)
+        else:
+            self.btn_delete_last_row.configure(state=ctk.DISABLED)
+
+    def refreshLabels(self):
+        self.lbl_total_vals.configure(text="R {0:.2f}\nR {1:.2f}".format(self.totalIncome, self.totalExpenses))
+
+
+    def adjustTotals(self):
+        _last_balance_change = self.balance_changes.pop()
+
+        if _last_balance_change < 0:
+            self.totalExpenses -= abs(_last_balance_change)
+        else:
+            self.totalIncome -= abs(_last_balance_change)
 
 
 app = MainWindow()
