@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import sqlite3
 from tkinter import messagebox, ttk
 from datetime import date
 
@@ -9,7 +10,7 @@ class NumericEntry(ctk.CTkEntry):
         self.configure(validate="key", validatecommand=(self.register(self._validate), "%P"))
 
     def _validate(self, P):
-        if P == "":
+        if P == '':
             return True    # Allow empty input
 
         try:
@@ -29,8 +30,8 @@ class MainWindow(ctk.CTk):
 
     ########################
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self):    # Constructor
+        super().__init__() # Constructor of the Parent Class
 
         self.title("Expense Tracker")
 
@@ -185,6 +186,61 @@ class MainWindow(ctk.CTk):
 
         ##################################
 
+        self.connection = None
+
+    def __enter__(self):
+        self.connection = sqlite3.connect("history.db") # Connect to database "history.db" (implicitly creating it 1st if it doesn't exist)
+        self.c = self.connection.cursor()
+
+        self.c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        _db_table = self.c.fetchall()
+
+        if not _db_table: # If the table doesn't exist
+            self.c.execute('''
+                CREATE TABLE tblHistory (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Date TEXT,
+                    Description TEXT,
+                    Income REAL,
+                    Expense REAL,
+                    Balance REAL,
+                    Balance_Change REAL
+                )
+            ''')
+        else: # Loading content from the Database
+            self.c.execute("SELECT * FROM tblHistory")
+            rows = self.c.fetchall()
+
+            for row in rows:
+                self.table.insert('',ctk.END, values=(
+                    row[1], row[2],
+                    f"R {row[3]:.2f}",
+                    f"R {row[4]:.2f}",
+                    f"R {row[5]:.2f}"
+                ))
+                self.balances.append(row[5])
+                self.balance_changes.append(row[6])
+
+            self.checkRows()
+
+            self.c.execute("SELECT SUM(Income) FROM tblHistory")
+            query_output = self.c.fetchone()
+            if query_output != None:
+                self.totalIncome = query_output[0]
+            else:
+                self.totalIncome = 0
+
+            self.c.execute("SELECT SUM(Expense) FROM tblHistory")
+            query_output = self.c.fetchone()
+            if query_output != None:
+                self.totalExpenses = query_output[0]
+            else:
+                self.totalExpenses = 0
+
+            self.refreshLabels()
+
+        return self
+
     def enable_inputAmount(self):
         self.inputAmount.configure(state=ctk.NORMAL)
 
@@ -202,6 +258,8 @@ class MainWindow(ctk.CTk):
     def insertRow(self):
         _income = 0
         _expense = 0
+        _today = date.today().strftime("%d %b %Y")
+        _description = self.inputDesc.get()
 
         if self.rb.get() == 1:
             _income = float(self.inputAmount.get())
@@ -217,12 +275,12 @@ class MainWindow(ctk.CTk):
 
         self.balance_changes.append(_income - _expense)
 
-        self.table.insert("", index=ctk.END, values=(
-            date.today().strftime("%d %b %Y"),
-            self.inputDesc.get(),
-            "ZAR {:.2f}".format(_income),
-            "ZAR {:.2f}".format(_expense),
-            "ZAR {:.2f}".format(self.balances[-1]),
+        self.table.insert('', index=ctk.END, values=(
+            _today,
+            _description,
+            f"R {_income:.2f}",
+            f"R {_expense:.2f}",
+            f"R {self.balances[-1]:.2f}",
         ))
 
         self.refreshLabels()
@@ -235,33 +293,25 @@ class MainWindow(ctk.CTk):
 
         self.checkRows()
 
+        self.c.execute(f'''
+            INSERT INTO tblHistory (Date, Description, Income, Expense, Balance, Balance_Change)
+            VALUES ('{_today}', '{_description}', '{_income}', '{_expense}', '{self.balances[-1]}', '{self.balance_changes[-1]}')
+        ''')
+
     def delete_selected_rows(self, _):
         _last_selected_item = self.table.selection()[-1]
         _last_item = self.table.get_children()[-1]
 
         if _last_selected_item == _last_item:
-
             num_selected_rows = len(self.table.selection())
-            del self.balances[-num_selected_rows:]
 
             for _ in range(num_selected_rows):
-                self.adjustTotals()
-            self.refreshLabels()
+                self.delete_last_row(inside_loop=True)
 
-            for row in self.table.selection():
-                self.table.delete(row)
+            self.refreshLabels()
             self.checkRows()
         else:
            messagebox.showerror("Invalid Range", "Must select the last row, or last few rows")
-
-    def delete_last_row(self):
-        self.adjustTotals()
-        self.refreshLabels()
-
-        _lastRow = self.table.get_children()[-1]
-        self.table.delete(_lastRow)
-
-        self.checkRows()
 
     # Used to enable the "Add Row" button if the input fields have content
     def checkInputs(self, _):
@@ -281,7 +331,8 @@ class MainWindow(ctk.CTk):
         self.lbl_total_vals.configure(text="R {0:.2f}\nR {1:.2f}".format(self.totalIncome, self.totalExpenses))
 
 
-    def adjustTotals(self):
+    def delete_last_row(self, inside_loop=False):
+        self.balances.pop()
         _last_balance_change = self.balance_changes.pop()
 
         if _last_balance_change < 0:
@@ -289,6 +340,25 @@ class MainWindow(ctk.CTk):
         else:
             self.totalIncome -= abs(_last_balance_change)
 
+        _lastRow = self.table.get_children()[-1]
+        self.table.delete(_lastRow)
 
-app = MainWindow()
-app.mainloop()
+        if not inside_loop: # Becuase I don't want to unnecessarily call the same method
+            self.refreshLabels()
+            self.checkRows()
+
+        self.c.execute("DELETE FROM tblHistory WHERE id = (SELECT id FROM tblHistory ORDER BY id DESC LIMIT 1)")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            print(f"An exception of type {exc_type} occurred: {exc_val}")
+            print(f"Traceback:\n{exc_tb}")
+        else:
+            if self.connection:
+                self.connection.commit()
+                self.connection.close()
+                self.connection = None # Reset the connection
+
+
+with MainWindow() as app:
+    app.mainloop()
