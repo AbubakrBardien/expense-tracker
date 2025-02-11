@@ -225,14 +225,14 @@ class MainWindow(ctk.CTk):
 
             self.c.execute("SELECT SUM(Income) FROM tblHistory")
             query_output = self.c.fetchone()
-            if query_output != None:
+            if query_output[0] != None:
                 self.totalIncome = query_output[0]
             else:
                 self.totalIncome = 0
 
             self.c.execute("SELECT SUM(Expense) FROM tblHistory")
             query_output = self.c.fetchone()
-            if query_output != None:
+            if query_output[0] != None:
                 self.totalExpenses = query_output[0]
             else:
                 self.totalExpenses = 0
