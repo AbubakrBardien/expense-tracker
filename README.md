@@ -2,6 +2,8 @@
 
 The Expense Tracker is in South African Rands \(R\).
 
+![Screenshot](expense_tracker_screenshot.png)
+
 ## Installation
 
 Python is obviously required, since this is a python application. It is highly recommended to use a Python Virtual Environment: `pip install virtualenv`
