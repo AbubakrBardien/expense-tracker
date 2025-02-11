@@ -195,7 +195,7 @@ class MainWindow(ctk.CTk):
         self.c.execute("SELECT name FROM sqlite_master WHERE type='table'")
         _db_table = self.c.fetchall()
 
-        if not _db_table: # If the table doesn't exist
+        if not _db_table: # If the table doesn't exist yet, then create it
             self.c.execute('''
                 CREATE TABLE tblHistory (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -207,7 +207,7 @@ class MainWindow(ctk.CTk):
                     Balance_Change REAL
                 )
             ''')
-        else: # Loading content from the Database
+        else: # If the table does exist, load the content from that table into the Treeview and Labels
             self.c.execute("SELECT * FROM tblHistory")
             rows = self.c.fetchall()
 
@@ -247,6 +247,7 @@ class MainWindow(ctk.CTk):
     def disable_inputAmount(self):
         self.inputAmount.configure(state=ctk.DISABLED)
 
+    # Used for formatting the 2 buttons consistantly in the application
     def button_frame_config(self, frame: ctk.CTkFrame):
         frame.columnconfigure(0, uniform=self.U_TAG, weight=3)
         frame.columnconfigure(1, uniform=self.U_TAG, weight=4)
@@ -343,7 +344,7 @@ class MainWindow(ctk.CTk):
         _lastRow = self.table.get_children()[-1]
         self.table.delete(_lastRow)
 
-        if not inside_loop: # Becuase I don't want to unnecessarily call the same method
+        if not inside_loop: # Becuase I don't want to unnecessarily call the same method multiple times
             self.refreshLabels()
             self.checkRows()
 
