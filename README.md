@@ -6,7 +6,8 @@ The Expense Tracker is in South African Rands \(R\).
 
 ## Installation
 
-Python is obviously required, since this is a python application. It is highly recommended to use a Python Virtual Environment, like `virtualenv` for example.\
+Python is obviously required, since this is a python application. It is highly recommended to use a Python Virtual Environment, like `virtualenv` for example.
+
 For Windows: `pip install virtualenv`\
 For Linux: `pipx install virtualenv` (Install `pipx` with your package manager if you haven't already)
 
